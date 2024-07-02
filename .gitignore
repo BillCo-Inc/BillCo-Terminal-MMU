@@ -1,0 +1,23 @@
+# Ignore Vivado temporary and generated directories
+/*.cache/
+/*.gen/
+/*.hw/
+/*.ip_user_files/
+/*.sim/
+
+# Ignore all log files
+*.log
+
+# Ignore all temporary files
+*.tmp
+
+# Ignore all auto-generated files
+vivado.jou
+vivado.log
+
+# Ignore simulation output directories
+/xsim.dir
+
+# Ignore compiled binaries
+*.bit
+*.bin
