@@ -72,9 +72,6 @@ module RangeConfigController
     assign page_index_bus = page_index_write ? range_config : 8'bz;
     assign page_high_speed_bus = page_high_speed_we ?  {9{range_config}} : 72'bz;
     always @(start_data_bus, end_data_bus, config_data_bus) begin
-        page_index_write <= 0; // De-assert Page Configuration Table write enable by default each cycle
-        page_high_speed_we <= 0; // De-assert Page Configuration Table high speed write enable by default each cycle
-        
         if (start_write_enable && start_data_bus !== 8'bz) begin // Processor is writing to the range start register
             range_start <= start_data_bus; // Write the value on the range start data bus to the register
         end else if(end_write_enable && end_data_bus !== 8'bz) begin // Processor is writing to the range end register
@@ -100,7 +97,7 @@ module RangeConfigController
             
             if(page_table_index == range_end) begin // The index conter is at the last index of the range
                 proc_ready <= 1; // Enable the processesor again
-            state <= IDLE; // Set state back to IDLE
+                state <= IDLE; // Set state back to IDLE
             end
         end
     end
@@ -121,7 +118,7 @@ module RangeConfigController
             
             if(page_table_index == range_end) begin // The index conter is at the last index of the range
                 proc_ready <= 1; // Enable the processesor again
-            state <= IDLE; // Set state back to IDLE
+                state <= IDLE; // Set state back to IDLE
             end
         end
     end

@@ -37,25 +37,25 @@ module PresetsConfigController
 );
     
     reg [7:0] preset; // Specifies the preset configuration to use when in presets configuration mode (15 presets)
-    // Preset 00h, 0 pages / 0 pages shared RAM (0 bytes / 0 bytes shared), 256 pages ROM (65536 bytes)
-    // Preset 01h, 64 pages / 0 pages shared RAM (16384 bytes / 0 bytes shared), 192 pages ROM (49152 bytes)
-    // Preset 02h, 128 pages / 0 pages shared RAM (32768 bytes / 0 bytes shared), 128 pages ROM (32769 bytes)
-    // Preset 04h, 192 pages / 0 pages shared RAM (49152 bytes / 0 bytes shared), 64 pages ROM (16384 bytes)
-    // Preset 08h, 256 pages / 0 pages shared RAM (65536 bytes / 0 bytes shared), 0 pages ROM (0 bytes)
+    // Preset 00h,   0 pages shared RAM /   0 pages banked RAM (    0 bytes /     0 bytes shared), 256 pages ROM (65536 bytes)
+    // Preset 01h,   0 pages shared RAM /  64 pages banked RAM (16384 bytes /     0 bytes shared), 192 pages ROM (49152 bytes)
+    // Preset 02h,   0 pages shared RAM / 128 pages banked RAM (32768 bytes /     0 bytes shared), 128 pages ROM (32769 bytes)
+    // Preset 04h,   0 pages shared RAM / 192 pages banked RAM (49152 bytes /     0 bytes shared),  64 pages ROM (16384 bytes)
+    // Preset 08h,   0 pages shared RAM / 256 pages banked RAM (65536 bytes /     0 bytes shared),   0 pages ROM (    0 bytes)
     
-    // Preset 10h, 0 pages / 64 pages shared RAM (0 bytes / 16384 bytes shared), 192 pages ROM (49152 bytes)
-    // Preset 11h, 64 pages / 64 pages shared RAM (16384 bytes / 16384 bytes shared), 128 pages ROM (32769 bytes)
-    // Preset 12h, 128 pages / 64 pages shared RAM (32768 bytes / 16384 bytes shared), 64 pages ROM (16384 bytes) (default preset)
-    // Preset 14h, 192 pages / 64 pages shared RAM (49153 bytes / 16384 bytes shared), 0 pages ROM (0 bytes)
+    // Preset 10h,  64 pages shared RAM /   0 pages banked RAM (    0 bytes / 16384 bytes shared), 192 pages ROM (49152 bytes)
+    // Preset 11h,  64 pages shared RAM /  64 pages banked RAM (16384 bytes / 16384 bytes shared), 128 pages ROM (32769 bytes)
+    // Preset 12h,  64 pages shared RAM / 128 pages banked RAM (32768 bytes / 16384 bytes shared),  64 pages ROM (16384 bytes) (default preset)
+    // Preset 14h,  64 pages shared RAM / 192 pages banked RAM (49153 bytes / 16384 bytes shared),   0 pages ROM (    0 bytes)
     
-    // Preset 20h, 0 pages / 128 pages shared RAM (0 bytes / 32768 bytes shared), 128 pages ROM (32769 bytes)
-    // Preset 21h, 64 pages / 128 pages shared RAM (16384 bytes / 32768 bytes shared), 64 pages ROM (16384 bytes)
-    // Preset 22h, 128 pages/ 128 pages shared RAM (32768 bytes / 32768 bytes shared), 0 pages ROM (0 bytes)
+    // Preset 20h, 128 pages shared RAM /   0 pages banked RAM (    0 bytes / 32768 bytes shared), 128 pages ROM (32769 bytes)
+    // Preset 21h, 128 pages shared RAM /  64 pages banked RAM (16384 bytes / 32768 bytes shared),  64 pages ROM (16384 bytes)
+    // Preset 22h, 128 pages shared RAM / 128 pages banked RAM (32768 bytes / 32768 bytes shared),   0 pages ROM (    0 bytes)
     
-    // Preset 40h, 0 pages / 192 pages shared RAM (0 bytes / 49153 bytes shared), 64 pages ROM (16384 bytes)
-    // Preset 41h, 64 pages / 192 pages shared RAM (16384 bytes / 49153 bytes shared), 0 pages ROM (0 bytes)
+    // Preset 40h, 192 pages shared RAM /   0 pages banked RAM (    0 bytes / 49153 bytes shared),  64 pages ROM (16384 bytes)
+    // Preset 41h, 192 pages shared RAM /  64 pages banked RAM (16384 bytes / 49153 bytes shared),   0 pages ROM (    0 bytes)
     
-    // Preset 80h, 0 pages / 256 pages shared RAM (0 bytes / 65536 bytes shared), 0 pages ROM (0 bytes)
+    // Preset 80h, 256 pages shared RAM /   0 pages banked RAM (    0 bytes / 65536 bytes shared),   0 pages ROM (    0 bytes)
     
     (* ram_style = "block" *) reg [71:0] preset_tables [0:14][0:28]; // 15 tables of 261 bytes in 9 byte groups. Contain the presets for flashing the page configuration table
     

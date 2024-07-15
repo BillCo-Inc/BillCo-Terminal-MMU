@@ -51,27 +51,25 @@ module PageConfigTable
     
     
     // Read/Write control
-    integer i;
+    reg[4:0] i;
     assign data_bus = (write_enable | high_speed_write) ? 8'bz : page_config_table[index_select];
-    always @(data_bus) begin
-        if(write_enable && data_bus !== 8'dz) begin // Writing to the configuration table
-            page_config_table[index_select] <= data_bus; // Write the value of the data bus to selected page config index
-        end
-    end
-    
     always @(posedge clock) begin
         if(high_speed_write && high_speed_bus !== 72'bz) begin // High speed writing to the configuration table
-            for(i = 0; i < 9; i = i + 1) begin
-                page_config_table[index_select + i] <= high_speed_bus[i*8 +: 8]; // Write the 9 bytes from high speed bus to contiguos indexes in table
+            for(i = 0; i < 4'd9; i = i + 1) begin
+                page_config_table[index_select + i] <= high_speed_bus[(8-i)*8 +: 8]; // Write the 9 bytes from high speed bus to contiguos indexes in reverse order
             end
+        end else if(write_enable && data_bus !== 8'dz) begin // Writing to the configuration table
+            page_config_table[index_select] <= data_bus; // Write the value of the data bus to selected page config index
         end
     end
     
     always @(negedge clock) begin // DDR capibility
         if(high_speed_write && high_speed_bus !== 72'bz) begin
-            for(i = 0; i < 9; i = i + 1) begin
-                page_config_table[index_select + i] <= high_speed_bus[i*8 +: 8];
+            for(i = 0; i < 4'd9; i = i + 1) begin
+                page_config_table[index_select + i] <= high_speed_bus[(8-i)*8 +: 8];
             end
+        end else if(write_enable && data_bus !== 8'dz) begin // Writing to the configuration table
+            page_config_table[index_select] <= data_bus; // Write the value of the data bus to selected page config index
         end
     end
 

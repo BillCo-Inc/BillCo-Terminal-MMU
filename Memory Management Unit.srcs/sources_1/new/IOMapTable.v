@@ -61,7 +61,7 @@ module IOMapTable
     // I/O map table to be stored in BRAM
     (* ram_style = "block" *) reg [REG_SIZE - 1:0] io_map_table [0:TABLE_INDICES - 1];
     
-    integer i;
+    reg[8:0] i;
     always @(posedge internal_reset) begin
         for(i = 0; i < TABLE_INDICES; i = i + 1) begin
             io_map_table[i] <= {REG_SIZE{1'b0}};

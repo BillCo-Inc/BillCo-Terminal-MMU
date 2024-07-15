@@ -72,7 +72,6 @@ module MemoryManagementUnit
     localparam PROC_RESERVED_START = 16'hFFFA;
     localparam PROC_RESERVED_END = 16'hFFFF;
     
-    // Persistent configuration registers (always visible)
     reg [2:0] config_mode; // MMU configuration mode register (always visible at CONFIG_MODE_ADDR)
     // 000b, presets configuration mode, I/O not mapped in
     // 001b, range configuration mode, I/O not mapped in
@@ -368,6 +367,13 @@ module MemoryManagementUnit
         endcase
     end
     
+    reg config_write_enable;
+    always @(data_bus) begin
+        if(config_write_enable && data_bus[2:0] !== 3'dz) begin
+            config_mode <= data_bus[2:0]; // Assign the value on the data bus to the configuration mode register
+        end
+    end
+    
     assign data_bus = (mmu_read) ? data_out : 8'bz; // When processor is reading from MMU drive the data bus
     
     always @(negedge resetb) begin
@@ -407,7 +413,9 @@ module MemoryManagementUnit
             translate_enable <= 0; // On reset de-assert MMU translate enable to disconnect the system address bus
             
             mmu_read <= 0; // On reset de-assert the processor MMU read signal so we dont drive the system data bus
-            reg_read_selection <= 0; // On reset initialize the 
+            reg_read_selection <= 0; // On reset initialize the
+            
+            config_write_enable <= 0; // On reset de-assert the configuration mode register write enable signal
         end else begin // resetb is positive and the reset counter is not at 2
             internal_reset <= 1'b0; // De-assert the internal reset
             resb_counter <= 2'b00; // Zero the resetb signal counter
@@ -416,6 +424,7 @@ module MemoryManagementUnit
     
     always @(proc_address_bus, rwb) begin
         mmu_read <= 0; // De-assert an MMU read by default
+        config_write_enable <= 0; // De-assert write enable of the configuration mode register
         root_PageConfigIndexWriteEnable <= 0; // De-assert page configuration write enable by default each cycle
         root_TranslationTableWriteEnable <= 0; // De-assert translation table write enable by default each cycle
         iomap_write_enable <= 0; // De-assert io map write enable by default each cycle
@@ -434,8 +443,8 @@ module MemoryManagementUnit
                         mmu_read <= 1; // Assert Processor <- MMU read
                         reg_read_selection <= 4'd0;
                     end else begin // Processor is writing
-                        if(data_bus < 2'b11) begin
-                            config_mode <= data_bus[1:0]; // Write data bus to the config mode register
+                        if(data_bus < 4'b1000) begin
+                            config_write_enable <= 1; // Set write enable for the configuration mode register
                         end
                     end
                 end

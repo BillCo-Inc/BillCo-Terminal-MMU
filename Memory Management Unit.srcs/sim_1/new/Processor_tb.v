@@ -45,7 +45,7 @@ module Processor_tb (
     reg [7:0] temp_write_data;
     reg temp_rwb;
     
-    reg [4:0] state; // Register to track state of processor
+    reg [15:0] state; // Register to track state of processor
     
     reg [15:0] internal_address; // Register to hold the addrsss to be put onto the address lines on the next negative edge of clock
     reg data_bus_drive; // Control signal to drive the data bus
@@ -77,11 +77,9 @@ module Processor_tb (
     assign data_bus = (data_bus_drive) ? write_data_reg : 8'bz;
     
     always @(negedge clock) begin
-        if(ready & resetb) begin
-            #tADS; // Delay to simulate Address Setup Time
-            address_bus <= internal_address;
-            rwb <= temp_rwb;
-        end
+        #tADS; // Delay to simulate Address Setup Time
+        address_bus <= internal_address;
+        rwb <= temp_rwb;
     end
     
     always @(negedge clock) begin
@@ -201,7 +199,7 @@ module Processor_tb (
                     assert(data_bus == 8'd1) else $fatal("Data bus should be 1 driven by processor, the new default RAM bank selection");
                 end
                 4'b1110: begin // state 14
-                    internal_address <= 16'hFFF9; // Read configuration mode
+                    internal_address <= 16'hFFF6; // Read the current preset configuration (should be 12 hex)
                     state <= 4'b1111;
                     
                     #tDSR;
@@ -209,29 +207,198 @@ module Processor_tb (
                 end
                 4'b1111: begin // state 15
                     temp_rwb <= 1'b0; // Set processor to write
+                    internal_address <= 16'hFFF6; // Write to the presets configuration register
+                    temp_write_data <= 8'h21; // Set MMU to preset number 11 (21 hex)
+                    state <= 5'b10000;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h12) else $fatal("Data bus should be hex 12, the default presets configuration mode of the MMU");
+                end
+                5'b10000: begin // state 16
+                    temp_rwb <= 1'b1; // Set processor back to read mode
+                    internal_address <= 16'hFFF6;
+                    state <= 5'b10001;
+                    
+                    #(tMDS + 1);
+                    assert(data_bus == 8'h21) else $fatal("Data bus should be hex 21, driven by the processor to write to presets configuration register");
+                end
+                5'b10001: begin // state 17
+                    internal_address <= 16'hFFF9; // Read configuration mode
+                    state <= 5'b10010;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h21) else $fatal("Data bus should be hex 21, driven by the MMU. The new presets configuration mode");
+                end
+                5'b10010: begin // state 18
+                    temp_rwb <= 1'b0; // Set processor to write
                     internal_address <= 16'hFFF9; // Access the MMU configuration mode register
                     temp_write_data <= 8'b0000_0101; // Select ranged config mode with IO mapped in
-                    state <= 5'b10000;
+                    state <= 5'b10011;
                     
                     #tDSR;
                     assert(data_bus == 8'b0000_0100) else $fatal("Data bus should be 100, the default configuration state of the MMU");
                 end
-                5'b10000: begin // state 16
+                5'b10011: begin // state 19
                     temp_rwb <= 1'b1; // Set processor back to read mode
                     internal_address <= 16'hFFF9;
-                    state <= 5'b10001;
+                    state <= 5'b10100;
                     
                     #(tMDS + 1);
                     assert(data_bus == 8'b0000_0101) else $fatal("Data bus should be 101, driven by processor to write");
                 end
-                5'b10001: begin // state 17
-                    
-                    state <= 5'b10010;
+                5'b10100: begin // state 20
+                    internal_address <= 16'hFFF4; // Read the range start register
+                    state <= 5'b10101;
                     
                     #tDSR;
-                    assert(data_bus == 8'b0000_0101) else $fatal("Data bus should be 101, drven by MMU. The new configuratio mode selection");
+                    assert(data_bus == 8'b0000_0101) else $fatal("Data bus should be 101, drven by MMU. The new configuration mode selection");
                 end
-                5'b10010: begin // state 18
+                5'b10101: begin // state 21
+                    temp_rwb <= 1'b0; // Set processor to write
+                    internal_address <= 16'hFFF4;
+                    temp_write_data <= 8'd20;
+                    state <= 5'b10110;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'd0) else $fatal("Data bus should be 0, driven by MMU. The default range configuration start index");
+                end
+                5'b10110: begin // state 22
+                    temp_rwb <= 1'b1; // Set processor to read
+                    internal_address <= 16'hFFF4;
+                    state <= 5'b10111;
+                    
+                    #(tMDS + 1);
+                    assert(data_bus == 8'h14) else $fatal("Data bus should be hex 14, driven by the processor to write to range config start register");
+                end
+                5'b10111: begin // state 23
+                    internal_address <= 16'hFFF5; // Read the range end register
+                    state <= 5'b11000;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h14) else $fatal("Data bus should be hex 14, driven by the MMU. The new range start value");
+                end
+                5'b11000: begin // state 24
+                    temp_rwb <= 1'b0; // Set processor to write
+                    internal_address <= 16'hFFF5;
+                    temp_write_data <= 8'd32;
+                    state <= 5'b11001;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'd0) else $fatal("Data bus should be 0, driven by MMU. The default range configuration end index");
+                end
+                5'b11001: begin // state 25
+                    temp_rwb <= 1'b1; // Set processor to read
+                    internal_address <= 16'hFFF5;
+                    state <= 5'b11010;
+                    
+                    #(tMDS + 1);
+                    assert(data_bus == 8'h20) else $fatal("Data bus should be hex 20, driven by processor to write to range config end register");
+                end
+                5'b11010: begin // state 26
+                    temp_rwb <= 1'b0; // Set processor to write
+                    internal_address <= 16'hFFF6;
+                    temp_write_data <= 8'h43; // Change the configuration for pages 20 though 32 to be RAM bank 3 pages
+                    state <= 5'b11011;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h20) else $fatal("Data bus should be hex 20, driven by the MMU. The new range end value");
+                end
+                5'b11011: begin // state 27
+                    temp_rwb <= 1'b1; // Set processor to read
+                    internal_address <= 16'hFFF6;
+                    state <= 5'b11100;
+                    
+                    #(tMDS + 1);
+                    assert(data_bus == 8'h43) else $fatal("Data bus should be hex 43, driven by the processor to write to the range configuration register");
+                end
+                5'b11100: begin // state 28
+                    temp_rwb <= 1'b0; // Set processor to write
+                    internal_address <= 16'hFFF9;
+                    temp_write_data[2:0] <= 3'b110;
+                    state <= 5'b11101;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h43) else $fatal("Data bus should be hex 43, driven by the MMU. The new range configuration value");
+                end
+                5'b11101: begin // state 29
+                    temp_rwb <= 1'b1;
+                    internal_address <= 16'h0000;
+                    state <= 5'b11110;
+                    
+                    #(tMDS + 1);
+                    assert(data_bus == 8'b0000_0110) else $fatal("Data bus should be binary 110 (hex 6), driven by the processor to write to MMU configuration mode register");
+                end
+                5'b11110: begin // state 30
+                    internal_address <= 16'h0013;
+                    state <= 5'b11111;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'hC0) else $fatal("Processor read from page config table address 0. Should read C0 as preset number 10 was set");
+                end
+                16'd31: begin // state 31
+                    internal_address <= 16'h0014;
+                    state <= 16'd32;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'hC0) else $fatal("Processor read from page config table address 19 (hex 13). Should read C0");
+                end
+                16'd32: begin // state 32
+                    internal_address <= 16'h0020;
+                    state <= 16'd33;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h43) else $fatal("Processor read from page config table address 20 (hex 14). Should be 43");
+                end
+                16'd33: begin // state 33
+                    internal_address <= 16'h0021;
+                    state <= 16'd34;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h43) else $fatal("Processor read from page config table address 32 (hex 20). Should be 43");
+                end
+                16'd34: begin // state 34
+                    internal_address <= 16'h007F;
+                    state <= 16'd35;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'hC0) else $fatal("Processor read from page config table address 33 (hex 21). Should be C0");
+                end
+                16'd35: begin // state 35
+                    internal_address <= 16'h0080;
+                    state <= 16'd36;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'hC0) else $fatal("Processor read from page config table address 127 (hex 7F). Should be C0");
+                end
+                16'd36: begin // state 36
+                    internal_address <= 16'h00BF;
+                    state <= 16'd37;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h40) else $fatal("Processor read from page config table addess 128 (hex 80). Should be 40");
+                end
+                16'd37: begin // state 37
+                    internal_address <= 16'h00C0;
+                    state <= 16'd38;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h40) else $fatal("Processor read from page config table address 191 (hex BF). Should be 40");
+                end
+                16'd38: begin // state 38
+                    internal_address <= 16'h00FF;
+                    state <= 16'd39;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h00) else $fatal("Processor read from page config table address 192 (hex C0). Should be 00");
+                end
+                16'd39: begin // state 39
+                    
+                    state <= 16'd40;
+                    
+                    #tDSR;
+                    assert(data_bus == 8'h00) else $fatal("Processor read from page config table address 255 (hex FF). Should be 00");
+                end
+                16'd40: begin // state 40
                     $finish;
                 end
             endcase
