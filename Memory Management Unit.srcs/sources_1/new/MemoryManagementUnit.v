@@ -15,7 +15,7 @@
 // 
 // Revision: V-2.0.0.0
 // Revision 2.0 - Design number 2
-// Additional Comments: See "Old" directory for original version
+// Additional Comments:
 // 
 //////////////////////////////////////////////////////////////////////////////////
 

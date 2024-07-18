@@ -50,6 +50,9 @@ module Processor_tb (
     reg [15:0] internal_address; // Register to hold the addrsss to be put onto the address lines on the next negative edge of clock
     reg data_bus_drive; // Control signal to drive the data bus
     
+    reg internal_ready;
+    reg rollback_state;
+    
     initial begin
         prog_counter = 16'hEEEE; // Initialize Program Counter to something specific that isnt significant to reserved addresses or reset sequence
         read_data_reg = 8'b0; // Initialize the data register to 0
@@ -74,21 +77,38 @@ module Processor_tb (
         end
     end
     
+    always @(negedge clock) begin
+        if(ready == 0) begin
+            internal_ready <= 0;
+            if(!rollback_state) begin
+                state <= state - 1;
+                rollback_state <= 1;
+            end
+        end else begin
+            internal_ready <= 1;
+            rollback_state <= 0;
+        end
+    end
+    
     assign data_bus = (data_bus_drive) ? write_data_reg : 8'bz;
     
     always @(negedge clock) begin
-        #tADS; // Delay to simulate Address Setup Time
-        address_bus <= internal_address;
-        rwb <= temp_rwb;
+        if(internal_ready && resetb) begin
+            #tADS; // Delay to simulate Address Setup Time
+            address_bus <= internal_address;
+            rwb <= temp_rwb;
+        end
     end
     
     always @(negedge clock) begin
-        #tDHW; // Delay to simulate Write Data Hold Time
-        data_bus_drive <= 0;
+        if(internal_ready && resetb) begin
+            #tDHW; // Delay to simulate Write Data Hold Time
+            data_bus_drive <= 0;
+        end
     end
     
     always @(posedge clock) begin
-        if(ready && resetb) begin
+        if(internal_ready && resetb) begin
             if(rwb) begin // Read from data bus
                 #((CLOCK_PERIOD_NS / 2) - tDSR); // Delay to simulate the time the memory chip has to get the data lines stabilized
                 read_data_reg <= data_bus;
@@ -101,7 +121,7 @@ module Processor_tb (
     end
     
     always @(posedge clock) begin
-        if(resetb && ready) begin
+        if(internal_ready && resetb) begin
             case (state)
                 4'b0001: begin // State 1: Reset internal hardware, read from FFFC
                     internal_address <= 16'hFFFC; // Read program counter low byte

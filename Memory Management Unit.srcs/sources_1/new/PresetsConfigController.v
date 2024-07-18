@@ -78,7 +78,6 @@ module PresetsConfigController
     
     always @(preset) begin // Change in preset detected
         state <= FLASHING; // Set state to flash page config table when change in preset detected
-        proc_ready <= 0; // Pull the ready signal low to halt the processor during the configuration flash
         page_table_index <= 0; // Initialize the page config table index to 0
         preset_table_index <= 5'h1F; // Initialize the presets table index to 1F (31) so it overflows to 0 on first iteration
         
@@ -105,6 +104,7 @@ module PresetsConfigController
     assign page_high_speed_bus = page_high_speed_we ? preset_tables[preset_index][preset_table_index] : 72'bz;
     always @(data_bus) begin
         if (write_enable && data_bus !== 8'bz) begin // Processor is writing to the preset configuration selection register
+            proc_ready <= 0; // Pull the ready signal low to halt the processor during the configuration flash
             case(data_bus)
                 8'h00, 8'h01, 8'h02, 8'h04, 8'h08,
                 8'h10, 8'h11, 8'h12, 8'h14,
