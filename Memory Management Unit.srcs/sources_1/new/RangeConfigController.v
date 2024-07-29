@@ -35,12 +35,14 @@ module RangeConfigController
     inout wire [7:0] end_data_bus, // Data bus for range end register, bi-directional
     inout wire [7:0] config_data_bus, // Data bus for range configuration register, bi-directional
     
-    output reg [8:0] page_index, // Index select for page config table
+    output reg [7:0] page_index, // Index select for page config table
     
-    output reg page_index_write, // Write enable line for single index bus in PageConfigController
-    output wire [7:0] page_index_bus, // Single index bus in PageConfigController
+    output reg page_byte_we, // Write enable line for single index bus in PageConfigController
+    input wire page_byte_wr, // Write received signal from PageConfigController for byte bus write
+    output wire [7:0] page_byte_bus, // Single index bus in PageConfigController
     
     output reg page_high_speed_we, // Write enable line for high speed bus in PageConfigController
+    input wire page_high_speed_wr, // Write received signal from PageConfigController for high speed bus write
     output wire [71:0] page_high_speed_bus // High speed bus to PageConfigController
 );
     
@@ -56,21 +58,13 @@ module RangeConfigController
         proc_ready <= 1;
         range_start <= 0;
         range_end <= 0;
-        page_index_write <= 0;
+        page_byte_we <= 0;
         page_high_speed_we <= 0;
-    end
-    
-    always @(range_config) begin // Change in range configuration detected
-        state <= FLASHING; // Set state to flash page config table when change in preset detected
-        proc_ready <= 0; // Pull the ready signal low to halt the processor during the configuration flash
-        page_table_index <= range_start; // Initialize the page config table index to the value in the range start register
     end
     
     assign start_data_bus = start_write_enable ? 8'bz : range_start;
     assign end_data_bus = end_write_enable ? 8'bz : range_end;
     assign config_data_bus = config_write_enable ? 8'bz : range_config;
-    assign page_index_bus = page_index_write ? range_config : 8'bz;
-    assign page_high_speed_bus = page_high_speed_we ?  {9{range_config}} : 72'bz;
     always @(start_data_bus, end_data_bus, config_data_bus) begin
         if (start_write_enable && start_data_bus !== 8'bz) begin // Processor is writing to the range start register
             range_start <= start_data_bus; // Write the value on the range start data bus to the register
@@ -81,45 +75,77 @@ module RangeConfigController
         end
     end
     
-    always @(posedge clock) begin // DDR write capability
-        page_high_speed_we <= 0; // De-assert the high speed bus write signal by default
-        page_index_write <= 0; // De-assert the single index write signal by default
-            
+    always @(range_config) begin // Change in range configuration detected
+        state <= FLASHING; // Set state to flash page config table when change in preset detected
+        proc_ready <= 0; // Pull the ready signal low to halt the processor during the configuration flash
+        page_table_index <= range_start; // Initialize the page config table index to the value in the range start register
+    end
+    
+    assign page_byte_bus = page_byte_we ? range_config : 8'bz;
+    assign page_high_speed_bus = page_high_speed_we ?  {9{range_config}} : 72'bz;
+    always @(negedge proc_ready, negedge page_high_speed_wr, negedge page_byte_wr) begin // Async write capability
         if(state == FLASHING) begin
-            page_index <= page_table_index; // Output index selection on index select bus
-            if((range_end - page_table_index) > 8) begin // The number of page indices to flash is 9 or greater
-                page_high_speed_we <= 1; // Enable the high speed bus to the page configuration table
-                page_table_index <= page_table_index + 9; // Increment the index counter by 9
-            end else begin // The number of page indices to flash is less than 9 so we cant use the high speed bus anymore
-                page_index_write <= 1; // Enable the single index write signal to the page configuration table
-                page_table_index <= page_table_index + 1; // Increment the index counder by 1
+            if(page_table_index != range_end + 1) begin
+                page_index <= page_table_index; // Output index selection on index select bus
+                if((range_end - page_table_index) > 8) begin // The number of page indices to flash is 9 or greater
+                    page_high_speed_we <= 1; // Enable the high speed bus to the page configuration table
+                    page_table_index <= page_table_index + 9; // Increment the index counter by 9
+                end else begin // The number of page indices to flash is less than 9 so we cant use the high speed bus anymore
+                    page_byte_we <= 1; // Enable the single index write signal to the page configuration table
+                    page_table_index <= page_table_index + 1; // Increment the index counder by 1
+                end
+            end else begin
+                proc_ready <= 1;
+                state <= IDLE;
             end
+        end
+    end
+    always @(posedge page_high_speed_wr) begin
+        page_high_speed_we <= 0;
+    end
+    always @(posedge page_byte_wr) begin
+        page_byte_we <= 0;
+    end
+        
+    /*always @(posedge clock) begin // DDR write capability
+        if(state == FLASHING) begin
+            page_high_speed_we <= 0;
+            page_byte_we <= 0;
             
-            if(page_table_index == range_end) begin // The index conter is at the last index of the range
-                proc_ready <= 1; // Enable the processesor again
-                state <= IDLE; // Set state back to IDLE
+            if(page_table_index != range_end + 1) begin
+                page_index <= page_table_index; // Output index selection on index select bus
+                if((range_end - page_table_index) > 8) begin // The number of page indices to flash is 9 or greater
+                    page_high_speed_we <= 1; // Enable the high speed bus to the page configuration table
+                    page_table_index <= page_table_index + 9; // Increment the index counter by 9
+                end else begin // The number of page indices to flash is less than 9 so we cant use the high speed bus anymore
+                    page_byte_we <= 1; // Enable the single index write signal to the page configuration table
+                    page_table_index <= page_table_index + 1; // Increment the index counder by 1
+                end
+            end else begin
+                proc_ready <= 1;
+                state <= IDLE;
             end
         end
     end
     
     always @(negedge clock) begin // DDR write capability
-        page_high_speed_we <= 0; // De-assert the high speed bus write signal by default
-        page_index_write <= 0; // De-assert the single index write signal by default
-        
         if(state == FLASHING) begin
-            page_index <= page_table_index; // Output index selection on index select bus
-            if((range_end - page_table_index) > 8) begin // The number of page indices to flash is 9 or greater
-                page_high_speed_we <= 1; // Enable the high speed bus to the page configuration table
-                page_table_index <= page_table_index + 9; // Increment the index counter by 9
-            end else begin // The number of page indices to flash is less than 9 so we cant use the high speed bus anymore
-                page_index_write <= 1; // Enable the single index write signal to the page configuration table
-                page_table_index <= page_table_index + 1; // Increment the index counder by 1
-            end
+            page_high_speed_we <= 0;
+            page_byte_we <= 0;
             
-            if(page_table_index == range_end) begin // The index conter is at the last index of the range
-                proc_ready <= 1; // Enable the processesor again
-                state <= IDLE; // Set state back to IDLE
+            if(page_table_index != range_end + 1) begin
+                page_index <= page_table_index; // Output index selection on index select bus
+                if((range_end - page_table_index) > 8) begin // The number of page indices to flash is 9 or greater
+                    page_high_speed_we <= 1; // Enable the high speed bus to the page configuration table
+                    page_table_index <= page_table_index + 9; // Increment the index counter by 9
+                end else begin // The number of page indices to flash is less than 9 so we cant use the high speed bus anymore
+                    page_byte_we <= 1; // Enable the single index write signal to the page configuration table
+                    page_table_index <= page_table_index + 1; // Increment the index counder by 1
+                end
+            end else begin
+                proc_ready <= 1;
+                state <= IDLE;
             end
         end
-    end
+    end*/
 endmodule

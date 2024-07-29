@@ -1,0 +1,345 @@
+/*
+    A test program written in hex to verify the functionality of the MMU. Part 2 for secondary ROM
+*/
+
+/* Set the reset vector value to point to the beginning of ROM space on default MMU presets configuration state 0x12 (state 7) */
+/* ROM space starts at page 0xC0 (192) */
+@FFFC   06          // Set low byte of reset vector to 0x00, start of page
+@FFFD   C0          // Set high byte of reset vector to 0xC0, page 192
+
+/* Create end case subroutine to break at end of test sequence */
+@C000   4C 00 C0    // JMP $C000    : Loop at address C000 on successful tests completion
+
+/* Create FAIL subroutine to branch to if any condition is not met */
+@C003   4C 03 C0    // JMP $C003    : Loop at address C003 on test failure
+
+/* Start the test program at address 0xC000 (49152) */
+@C006   D8          // CLD          : Clear decimal mode
+        
+        // Test the Default ROM Bank Selection register ***********************************************************************************
+
+        AD F7 FF    // LDA $FFF7    : Load the value at address FFF7 (Default ROM bank selection register) into the accumulator
+        A9 01       // LDA #$01     : Load immediate value of 1 into the accumulator
+        8D F7 FF    // STA $FFF7    : Store the value in the accumulator (1) to address FFF7 (Default ROM bank selection register)
+        AD F7 FF    // LDA $FFF7    : Load the value at address FFF7 into the accumulator
+        C9 01       // CMP #$01     : Compare the value in the accumulator (value from Default ROM bank selection register) with 1
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to the failed subroutine
+
+        //*********************************************************************************************************************************
+        
+        // Test Accessing peripheral devices **********************************************************************************************
+
+        AD E0 FE    // LDA $FEE0    : Read from the VIA at address FEE0
+        AD F0 FE    // LDA $FEF0    : Read from the ACIA at address FEF0
+
+        //*********************************************************************************************************************************
+        
+        // Test the Default RAM Bank Selection register ***********************************************************************************
+
+        AD F8 FF    // LDA $FFF8    : Load the value at address FFF8 (Default RAM bank selection register) into the accumulator
+        A9 01       // LDA #$01     : Load immediate value of 1 into the accumulator
+        8D F8 FF    // STA $FFF8    : Store value in the accumulator (1) to address FFF8 (Default RAM bank selection register)
+        AD F8 FF    // LDA $FFF8    : Load the value at address FFF8 into the accumulator
+        C9 01       // CMP #$01     : Compare the value in the accumulator (value from Default RAM bank selection register) with 1
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to the failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Test the Presets Configuration Preset selection register ***********************************************************************
+        
+        AD F4 FF    // LDA $FFF4    : Read the current preset configuration (should be 0x12)
+        C9 12       // CMP #$12     : Compare the value read to 0x12
+        F0 03       // BEQ #$03     : If the value read was 0x12 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read was not 0x12 we jump to fail
+        A9 21       // LDA #$21     : Load immediate of 0x21 into accumulator
+        8D F4 FF    // STA $FFF4    : Store the value in the accumulator (0x21) to address FFF6 (Presets Configuration Selection Register)
+        AD F4 FF    // LDA $FFF4    : Read the new preset configuration (should now be 0x21)
+        C9 21       // CMP #$21     : Compare the value read to 0x21
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Test the MMU Configuration Mode Selection register and switch configuration to Range Configure Mode ****************************
+        
+        AD F9 FF    // LDA $FFF9    : Read the current MMU Configuration Mode register (should be 0x04)
+        C9 08       // CMP #$04     : Compare the value read to 0x08
+        F0 03       // BEQ #$03     : If the value read was 0x08 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read was not 0x08 we jump to fail
+        A9 09       // LDA #$05     : Load immediate of 0x09 into accumulator
+        8D F9 FF    // STA $FFF9    : Store the value in the accumulator (0x09) to address FFF9 (MMU Configuration Mode register)
+        AD F9 FF    // LDA $FFF9    : Read the new preset configuration (should now be 0x09)
+        C9 09       // CMP #$09     : Compare the value read to 0x09
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Test the Range Configuration, Range Start Selection register *******************************************************************
+        
+        AD F2 FF    // LDA $FFF2    : Read the Range Configuration, Range Start register
+        A9 14       // LDA #$14     : Load immediate of 0x14 into accumulator
+        8D F2 FF    // STA $FFF2    : Store the value in the accumulator (0x14) to address FFF2 (Range Configuration, Range Start register)
+        AD F2 FF    // LDA $FFF2    : Read the new value (should now be 0x14)
+        C9 14       // CMP #$14     : Compare the value read to 0x14
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Test the Range Configuration, Range End Selection register *********************************************************************
+        
+        AD F3 FF    // LDA $FFF3    : Read the Range Configuration, Range End register
+        A9 20       // LDA #$20     : Load immediate of 0x20 into accumulator
+        8D F3 FF    // STA $FFF3    : Store the value in the accumulator (0x20) to address FFF3 (Range Configuration, Range End register)
+        AD F3 FF    // LDA $FFF3    : Read the new value (should now be 0x20)
+        C9 20       // CMP #$20     : Compare the value read to 0x20
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Test the Range Configuration Range, Range Properties register ******************************************************************
+        
+        A9 43       // LDA #$43     : Load immediate of 0x43 into accumulator
+        8D F4 FF    // STA $FFF4    : Store the value in the accumulator (0x43) to address FFF4 (Range Configuration, Range Properties/Config register)
+        AD F4 FF    // LDA $FFF4    : Read the new value (should now be 0x43)
+        C9 43       // CMP #$43     : Compare the value read to 0x43
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Write to Page 1 before altering zero page physical memory address to map to Page 1 *********************************************
+
+        A9 FF       // LDA #$FF     : Load immediate of 0xFF into accumulator
+        8D 00 01    // STA $0100    : Store value in accumulator to address 0x0100
+        AD 00 01    // LDA $0100    : Read the address to verify the write
+        C9 FF       // CMP #$FF     : Compare read value to 0xFF
+        F0 03       // BEQ #$03     : If the value read is 0xFF we continue
+        4C 03 C0    // JMP $C003    : If the value read is not 0xFF we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Test the Zero Page, page select register, redirect the zero page to page 1 **************************************************
+
+        AD F5 FF    // LDA $FFF5    : Read the Zero Page, page select register
+        C9 00       // CMP #$00     : Compare the value read to 0x00
+        F0 03       // BEQ #$03     : If the value read was the expected value we skip over fail condition and continue
+        4C 03 C0    // JMP #C003    : If the value read was not the expected value we jump to fail condition
+        A9 01       // LDA #$01     : Load immediate of 0x01 into accumulator
+        8D F5 FF    // STA $FFF5    : Store the value in 0xFFF5, the Zero Page, page select/shift register
+        AD F5 FF    // LDA $FFF5    : Read the register again to verify the write
+        C9 01       // CMP #$01     : Compare the value read to 0x01
+        F0 03       // BEQ #$03     : If the value read was the expected value we continue
+        4C 03 C0    // JMP $C003    : If the value read was not the expected value we jump to fail condition
+
+        //*********************************************************************************************************************************
+
+        // Now test that Zero Page access is shifted to page 1 by reading 0x0000 which should now map to physical address 0x0100***********
+
+        A5 00       // LDA $00      : Read value at Zero Page address 0 (0x0000)
+        C9 FF       // CMP #$FF     : Compare the read value to 0xFF
+        F0 03       // BEQ #$03     : If the value read was 0xFF we continue
+        4C 03 C0    // JMP $C003    : If the value read was not 0xFF we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Write to Page 2 before altering stack page physical memory address to map to Page 2 *********************************************
+
+        A9 FF       // LDA #$FF     : Load immediate of 0xFF into accumulator
+        8D 00 02    // STA $0200    : Store value in accumulator to address 0x0200
+        AD 00 02    // LDA $0200    : Read the address to verify the write
+        C9 FF       // CMP #$FF     : Compare read value to 0xFF
+        F0 03       // BEQ #$03     : If the value read is 0xFF we continue
+        4C 03 C0    // JMP $C003    : If the value read is not 0xFF we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Test the Stack Page, page select register, shift the stack page to page 2 ************************************************
+
+        AD F6 FF    // LDA $FFF6    : Read the Stack Page, page select register
+        C9 01       // CMP #$01     : Compare the value read to 0x01
+        F0 03       // BEQ #$03     : If the value read was the expected value we skip over fail condition and continue
+        4C 03 C0    // JMP #C003    : If the value read was not the expected value we jump to fail condition
+        A9 02       // LDA #$02     : Load immediate of 0x02 into accumulator
+        8D F6 FF    // STA $FFF6    : Store the value in 0xFFF6, the Zero Page, page select/shift register
+        AD F6 FF    // LDA $FFF6    : Read the register again to verify the write
+        C9 02       // CMP #$02     : Compare the value read to 0x02
+        F0 03       // BEQ #$03     : If the value read was the expected value we continue
+        4C 03 C0    // JMP $C003    : If the value read was not the expected value we jump to fail condition
+
+        //*********************************************************************************************************************************
+
+        // Now test that Stack Page (page 1) access is shifted to page 2 by reading 0x0100 which should now map to physical address 0x0200*
+
+        AD 00 01    // LDA $0100    : Read value at Stack Page address 0 (0x0100)
+        C9 FF       // CMP #$FF     : Compare the read value to 0xFF
+        F0 03       // BEQ #$03     : If the value read was 0xFF we continue
+        4C 03 C0    // JMP $C003    : If the value read was not 0xFF we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Switch the MMU to Page Properties Table Configuration Mode **********************************************************************************
+        
+        A9 0A       // LDA #$0A     : Load immediate of 0x0A into accumulator
+        8D F9 FF    // STA $FFF9    : Store the value in the accumulator (0x0A) to address FFF9 (MMU Configuration Mode register)
+        AD F9 FF    // LDA $FFF9    : Read the new preset configuration (should now be 0x0A)
+        C9 0A       // CMP #$06     : Compare the value read to 0x0A
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Read from Page Properties Table, verify previous configuration is set *******************************************************
+        
+        A5 00       // LDA $00      : Load the value at address 0x00 in the zero page
+        C9 C0       // CMP #$C0     : Compare the value read to 0xC0
+        F0 03       // BEQ #$03     : If the value read is 0xC0 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0xC0 we jump to failed subroutine
+        
+        A5 13       // LDA $13      : Load the value at address 0x13 in the zero page
+        C9 C0       // CMP #$C0     : Compare the value read to 0xC0
+        F0 03       // BEQ #$03     : If the value read is 0xC0 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0xC0 we jump to failed subroutine
+        
+        A5 14       // LDA $14      : Load the value at address 0x14 in the zero page
+        C9 43       // CMP #$43     : Compare the value read to 0x43
+        F0 03       // BEQ #$03     : If the value read is 0x43 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x43 we jump to failed subroutine
+        
+        A5 20       // LDA $20      : Load the value at address 0x20 in the zero page
+        C9 43       // CMP #$43     : Compare the value read to 0x43
+        F0 03       // BEQ #$03     : If the value read is 0x43 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x43 we jump to failed subroutine
+        
+        A5 21       // LDA $21      : Load the value at address 0x21 in the zero page
+        C9 C0       // CMP #$C0     : Compare the value read to 0xC0
+        F0 03       // BEQ #$03     : If the value read is 0xC0 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0xC0 we jump to failed subroutine
+        
+        A5 7F       // LDA $7F      : Load the value at address 0x7F in the zero page
+        C9 C0       // CMP #$C0     : Compare the value read to 0xC0
+        F0 03       // BEQ #$03     : If the value read is 0xC0 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0xC0 we jump to failed subroutine
+        
+        A5 80       // LDA $80      : Load the value at address 0x80 in the zero page
+        C9 40       // CMP #$40     : Compare the value read to 0x40
+        F0 03       // BEQ #$03     : If the value read is 0x40 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x40 we jump to failed subroutine
+        
+        A5 BF       // LDA $BF      : Load the value at address 0xBF in the zero page
+        C9 40       // CMP #$40     : Compare the value read to 0x40
+        F0 03       // BEQ #$03     : If the value read is 0x40 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x40 we jump to failed subroutine
+        
+        A5 C0       // LDA $C0      : Load the value at address 0xC0 in the zero page
+        C9 00       // CMP #$00     : Compare the value read to 0x00
+        F0 03       // BEQ #$03     : If the value read is 0x00 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x00 we jump to failed subroutine
+        
+        A5 FF       // LDA $FF      : Load the value at address 0xFF in the zero page
+        C9 00       // CMP #$00     : Compare the value read to 0x00
+        F0 03       // BEQ #$03     : If the value read is 0x00 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x00 we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Confirm write to Page Properties Table in Page Properties Table Configuration Mode on MMU **************************************
+
+        A9 43       // LDA #$43     : Load immediate of 0x43 into accumulator
+        85 22       // STA $22      : Store accumulator at zero page address 0x22
+        A5 22       // LDA $22      : Load the value at address 0x22 in the zero page
+        C9 43       // CMP #$43     : Compare the value read to 0x43
+        F0 03       // BEQ #$03     : If the value read is 0x43 we continue
+        4C 03 C0    // JMP $C003    : If the value read is not 0x43 we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Switch the MMU to Page Translation Table Configuration Mode ********************************************************************
+        
+        A9 0B       // LDA #$0B     : Load immediate of 0x0B into accumulator
+        8D F9 FF    // STA $FFF9    : Store the value in the accumulator (0x06) to address FFF9 (MMU Configuration Mode register)
+        AD F9 FF    // LDA $FFF9    : Read the new preset configuration (should now be 0x06)
+        C9 0B       // CMP #$0B     : Compare the value read to 0x0B
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Read from the Page Translation Table, verify previous configuration ************************************************************
+
+        A5 00       // LDA $00      : Load the Zero Page, page translation from 0x00 into A
+        C9 01       // CMP #$01     : Compare the value in A to 0x01
+        F0 03       // BEQ #$03     : If the value read into A is 0x01 we continue
+        4C 03 C0    // JMP $C003    : If the value in A is not 0x01 we jump to fail state
+
+        A5 01       // LDA $0101    : Load the Stack Page, page  translation from 0x01 into A
+        C9 02       // CMP #$02     : Compare the value in A to 0x02
+        F0 03       // BEQ #$03     : If the value read into A is 0x02 we continue
+        4C 03 C0    // JMP $C003    : If the value in A is not 0x01 we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Confirm write to Page Translation Table in Page Translation Table Configuration Mode on MMU ************************************
+
+        A9 03       // LDA #$03     : Load immediate of 0x03 into accumulator
+        85 02       // STA $02      : Store accumulator at 0x02 (index three of Translation Table)
+        A5 02       // LDA #02      : Load the value back
+        C9 03       // CMP #$03     : Compare the value read to 0x03
+        F0 03       // BEQ #$03     : If the value read was 0x03 we continue
+        4C 03 C0    // JMP $C003    : If the value read was not 0x03 we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Switch the MMU to IO Map Table Configuration Mode ******************************************************************************
+        
+        A9 0C       // LDA #$0C     : Load immediate of 0x0C into accumulator
+        8D F9 FF    // STA $FFF9    : Store the value in the accumulator (0x0C) to address FFF9 (MMU Configuration Mode register)
+        AD F9 FF    // LDA $FFF9    : Read the new preset configuration (should now be 0x0C)
+        C9 0C       // CMP #$0C     : Compare the value read to 0x0C
+        F0 03       // BEQ #$03     : If the write operation succeeded we skip over the fail condition
+        4C 03 C0    // JMP $C003    : If the write operation failed we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Read from the IO Map Table *****************************************************************************************************
+
+        A5 00       // LDA $00      : Load the value at address 0x00 in the zero page
+        C9 00       // CMP #$00     : Compare the value read to 0x00
+        F0 03       // BEQ #$03     : If the value read is 0x40 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x40 we jump to failed subroutine
+        
+        A5 1D       // LDA $1D      : Load the value at address 0x1D in the zero page
+        C9 00       // CMP #$00     : Compare the value read to 0x00
+        F0 03       // BEQ #$03     : If the value read is 0x40 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x40 we jump to failed subroutine
+        
+        A5 1E       // LDA $1E      : Load the value at address 0x1E in the zero page
+        C9 01       // CMP #$01     : Compare the value read to 0x01
+        F0 03       // BEQ #$03     : If the value read is 0x00 we skip over fail condition
+        4C 03 C0    // JMP $C003    : If the value read is not 0x00 we jump to failed subroutine
+
+        //*********************************************************************************************************************************
+
+        // Write to the IO Map Table ******************************************************************************************************
+
+        A9 02       // LDA #$02     : Load immediate of 0x02 into accumulator
+        85 00       // STA $00      : Store the accumulator at 0x00
+        A5 00       // LDA $00      : Read the value back
+        C9 02       // CMP #$02     : Compare the read value to 0x02
+        F0 03       // BEQ #$03     : If the value read was 0x02 we continue
+        4C 03 C0    // JMP $C003    : If the value read was not 0x02 we jump to fail state
+
+        //*********************************************************************************************************************************
+
+        // Confirm that now accessing first block (8 bytes) in the IO mapped address space will enable peripheral device line 2 ***********
+
+        AD 00 FE    // LDA $FE00    : Read from the first byte/address in the newly mapped block in IO space (block one)
+        AD 07 FE    // LDA $FE01    : Read from the last byte/address in the newly mapped block in IO space (block one)
+
+        //*********************************************************************************************************************************
+        
+        4C 00 C0    // JMP $C000    : End of test cases, jump to end subroutine

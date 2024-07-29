@@ -1,0 +1,20 @@
+/*
+    A test program writen in hex to verify the functionality of the MMU. Part 1 for BIOS ROM
+*/
+
+/* Set the reset vector value to point to the begining of ROM space on default MMU presets configuration state 0x12 (state 7) */
+/* ROM space starts at page 0xC0 (192) */
+@FFFC   06          // Set low byte of reset vector to 0x00, start of page
+@FFFD   C0          // Set high byte of reset vector to 0xC0, page 192
+
+/* Create end case subroutine to break at end of test sequence */
+@C000   4C 00 C0    // JMP $C000    : Loop at address C000 on successful tests completion
+
+/* Create FAIL subroutine to branch to if any condition is not met */
+@C003   4C 03 C0    // JMP $C003    : Loop at address C003 on test failure
+
+/* Start the test program at address 0xC000 (49152) */
+@C006   D8          // CLD          : Clear decimal mode
+        AD F7 FF    // LDA $FFF7    : Load the value at address FFF7 (Default ROM bank selection register) into the accumulator
+        A9 01       // LDA #$01     : Load immediate value of 1 into the accumulator
+        8D F7 FF    // STA $FFF7    : Store the value in the accumulator (1) to address FFF7 (Default ROM bank selection register)

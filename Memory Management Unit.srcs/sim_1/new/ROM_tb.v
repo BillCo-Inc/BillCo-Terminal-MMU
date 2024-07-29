@@ -22,8 +22,7 @@
 
 module ROM_tb
 #(
-    parameter ASSIGNED_ADDRESS = 16'b0,
-    parameter ADDRESS_VALUE = 8'hff
+    parameter MEM_FILE = ""
 )
 (
     input wire clock,
@@ -40,16 +39,18 @@ module ROM_tb
     reg data_bus_drive; // Control signal to drive the data bus
     
     initial begin
-        for (i = 0; i < 65356; i = i + 1) begin
+        for (i = 0; i < 65556; i = i + 1) begin
             chip_memory[i] = 8'h00; // Initialize all addresses to 0
         end
         
-        chip_memory[ASSIGNED_ADDRESS] = ADDRESS_VALUE;
+        if(MEM_FILE != "") begin
+            $readmemh(MEM_FILE, chip_memory);
+        end
     end
     
     assign data_bus = (data_bus_drive) ? write_buffer : 8'bz;
     
-    always @(posedge clock) begin
+    always @(*) begin
         data_bus_drive <= 0;
         
         if (chip_enable) begin // Check to see if this chip is enabled

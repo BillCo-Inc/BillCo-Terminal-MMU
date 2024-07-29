@@ -21,3 +21,6 @@ vivado.log
 # Ignore compiled binaries
 *.bit
 *.bin
+
+# Ignore all STR files
+*.str

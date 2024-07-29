@@ -142,7 +142,7 @@ module Processor_tb (
                     prog_counter <= {data_bus, prog_counter[7:0]};
                     
                     #tDSR;
-                    assert(data_bus == 8'hbb) else $fatal("Data bus should be bb read from the BIO ROM chip");
+                    assert(data_bus == 8'hbb) else $fatal("Data bus should be bb read from the BIOS ROM chip");
                 end
                 4'b0100: begin // State 4: Set program counter
                     #(4*CLOCK_PERIOD_NS); // Wait for 4 clock cycles to finish 7 cycle reset sim
@@ -181,7 +181,7 @@ module Processor_tb (
                     assert(data_bus == 8'd1) else $fatal("Data bus should be 1, driven by default ROM bank selection now 1");
                 end
                 4'b1001: begin // State 9
-                    internal_address <= 16'hFEF0; // Access AIA
+                    internal_address <= 16'hFEF0; // Access ACIA
                     state <= 4'b1010;
                     
                     #tDSR;
@@ -395,7 +395,7 @@ module Processor_tb (
                     state <= 16'd37;
                     
                     #tDSR;
-                    assert(data_bus == 8'h40) else $fatal("Processor read from page config table addess 128 (hex 80). Should be 40");
+                    assert(data_bus == 8'h40) else $fatal("Processor read from page config table address 128 (hex 80). Should be 40");
                 end
                 16'd37: begin // state 37
                     internal_address <= 16'h00C0;

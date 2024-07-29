@@ -32,6 +32,7 @@ module PresetsConfigController
     inout wire [7:0] data_bus, // Data bus for preset selection register, bi-directional
     
     output reg page_high_speed_we, // Write enable line for high speed bus in PageConfigController
+    input wire page_high_speed_wr, // Write received signal for high speed bus in PageConfigController
     output reg [8:0] page_index, // Index select for page config table
     output wire [71:0] page_high_speed_bus // High speed bus to PageConfigController
 );
@@ -76,6 +77,22 @@ module PresetsConfigController
         page_high_speed_we <= 0; // On reset de-assert high speed bus write enable
     end
     
+    assign data_bus = write_enable ? 8'bz : preset;
+    always @(data_bus) begin
+        if (write_enable && data_bus !== 8'bz) begin // Processor is writing to the preset configuration selection register
+            proc_ready <= 0; // Pull the ready signal low to halt the processor during the configuration flash
+            case(data_bus)
+                8'h00, 8'h01, 8'h02, 8'h04, 8'h08,
+                8'h10, 8'h11, 8'h12, 8'h14,
+                8'h20, 8'h21, 8'h22,
+                8'h40, 8'h41,
+                8'h80: preset <= data_bus;
+                
+                default: preset <= 8'h12; // Set selection to default mode if input invalid
+            endcase
+        end
+    end
+    
     always @(preset) begin // Change in preset detected
         state <= FLASHING; // Set state to flash page config table when change in preset detected
         page_table_index <= 0; // Initialize the page config table index to 0
@@ -100,24 +117,26 @@ module PresetsConfigController
         endcase
     end
     
-    assign data_bus = write_enable ? 8'bz : preset;
     assign page_high_speed_bus = page_high_speed_we ? preset_tables[preset_index][preset_table_index] : 72'bz;
-    always @(data_bus) begin
-        if (write_enable && data_bus !== 8'bz) begin // Processor is writing to the preset configuration selection register
-            proc_ready <= 0; // Pull the ready signal low to halt the processor during the configuration flash
-            case(data_bus)
-                8'h00, 8'h01, 8'h02, 8'h04, 8'h08,
-                8'h10, 8'h11, 8'h12, 8'h14,
-                8'h20, 8'h21, 8'h22,
-                8'h40, 8'h41,
-                8'h80: preset <= data_bus;
-                
-                default: preset <= 8'h12; // Set selection to default mode if input invalid
-            endcase
+    always @(preset_index, negedge page_high_speed_wr) begin // Async write capability
+        if(state == FLASHING) begin
+            if(preset_table_index != 28) begin
+                page_high_speed_we <= 1; // Enable the high speed bus to the page configuration table
+                page_index <= page_table_index; // Output index selection on index select bus
+            
+                preset_table_index <= preset_table_index + 1;
+                page_table_index <= page_table_index + 9;
+            end else begin
+                proc_ready <= 1; // Enable the processor again
+                state <= IDLE; // Set state back to IDLE
+            end
         end
     end
+    always @(posedge page_high_speed_wr) begin
+        page_high_speed_we <= 0;
+    end
     
-    always @(posedge clock) begin // DDR write capability
+    /*always @(posedge clock) begin // DDR write capability
         if(state == FLASHING) begin
             if(preset_table_index != 28) begin
                 page_high_speed_we <= 1; // Enable the high speed bus to the page configuration table
@@ -147,6 +166,6 @@ module PresetsConfigController
                 state <= IDLE; // Set state back to IDLE
             end
         end
-    end
+    end*/
     
 endmodule

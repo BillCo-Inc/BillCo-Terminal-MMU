@@ -9,7 +9,7 @@
 // Project Name: Memory Management Unit
 // Target Devices: XC7S6, XC7S25 (prototyping board)
 // Tool Versions: 
-// Description: Module handles the I/O map table that mapps 8 address blocks of memory to certain peripheral chips
+// Description: Module handles the I/O map table that maps 8 address blocks of memory to certain peripheral chips
 // 
 // Dependencies:
 // 
@@ -22,7 +22,7 @@
 
 module IOMapTable
 #(
-    parameter BLOCK_SIZE = 8'd8, // The number of addresses per block
+    parameter BLOCK_SIZE = 8'd8, // The number of addresses per block. Each block corresponds to one peripheral device
     parameter INDEX_SELECT_BITS = 8'd5, // The number of bits for the index select net. Determined by the number needed to address the indices of the table
     parameter REG_SIZE = 3'd1, // The number of bits needed for the tables registers. Determined by the number needed to represent the total number of peripheral chip enable lines
     
